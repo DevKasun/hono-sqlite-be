@@ -1,12 +1,12 @@
 import { Hono } from "hono";
 import db from "./database/db";
 import { UserType } from "./types/types";
-
 const app = new Hono();
 
-const insertUser = db!.prepare(
-  "INSERT INTO users (email, password) VALUES (?,?)",
-);
+if (!db) {
+  console.log("Db not found!");
+  process.exit(1);
+}
 
 const getUser = db!.prepare("SELECT * FROM users where email = ?");
 
@@ -18,16 +18,16 @@ app.get("/", (c) => {
 
 app.post("/register", async (c) => {
   const { email, password } = await c.req.json();
+  const hashedPassword = await Bun.password.hash(password);
 
   try {
-    insertUser.run(email, password);
-
-    return c.json({ message: "User created successfully 😍" }, 201);
-  } catch (e) {
-    if (e instanceof Error) {
-      return c.json({ error: e.message }, 400);
-    }
-    return c.json({ error: "An unexpected error occurred ❗️" }, 500);
+    db.query("INSERT INTO users (email, password) VALUES (?, ?)").run(
+      email,
+      hashedPassword,
+    );
+    return c.json({ message: "User registered successfully" }, 201);
+  } catch (error) {
+    return c.json({ error: "Username already exists" + error }, 400);
   }
 });
 
