@@ -31,6 +31,31 @@ app.post("/register", async (c) => {
   }
 });
 
+app.post("/login", async (c) => {
+  const { email, password } = await c.req.json();
+
+  try {
+    const user = db.query(`SELECT * FROM users`).get(email) as
+      | UserType
+      | undefined;
+    if (!user) {
+      return c.json({ messsage: "Invalid credentials" }, 401);
+    }
+    const isPasswordVerified = await Bun.password.verify(
+      password,
+      user.password,
+    );
+    if (isPasswordVerified) {
+      return c.json({ messsage: "Login successfully!", userID: user.id }, 200);
+    } else {
+      return c.json({ message: "Invalid credentials" }, 401);
+    }
+  } catch (e) {
+    console.log(`Error: ${e}`);
+    return c.json({ error: "An unexpected error occurred" }, 500);
+  }
+});
+
 app.get("/users", (c) => {
   try {
     const users = getAllUsers.all() as UserType[];
